@@ -186,7 +186,7 @@
 
         <!-- Settings Button -->
         <button id="btnSettings" class="p-2.5 rounded-xl hover:bg-slate-200/50 dark:hover:bg-white/10 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors" title="設定">
-            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
         </button>
 
         <!-- Export Button -->
@@ -214,9 +214,16 @@
                 </li>
                 <li class="flex gap-3">
                     <span class="flex-shrink-0 w-5 h-5 rounded-full bg-blue-500/20 text-blue-500 flex items-center justify-center text-xs font-bold">4</span>
-                    <span>プレビューで確認後、[保存]ボタンでテキストを出力します。</span>
+                    <span>プレビューで確認後、[保存]または[コピー]して活用します。</span>
                 </li>
             </ul>
+            
+            <div class="mt-4 pt-4 border-t border-slate-200 dark:border-white/10">
+                <h4 class="text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">💡 活用ヒント</h4>
+                <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                    匿名化されたテキストは、<strong>NotebookLM</strong>や<strong>ChatGPT</strong>などのAIツールに安全に入力できます。判例分析や要約に最適です。
+                </p>
+            </div>
         </div>
 
         <!-- Settings Popover -->
@@ -315,6 +322,11 @@
           <div id="panelSrc" class="glass-panel rounded-2xl flex flex-col overflow-hidden absolute inset-0 md:relative z-10 md:z-auto">
             <div class="p-3 border-b border-slate-200 dark:border-white/10 bg-slate-100/50 dark:bg-black/20 flex justify-between items-center">
               <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-2">原文 / 解析結果</span>
+              <!-- Added Clear Button -->
+              <button id="btnQuickClear" class="text-xs text-slate-400 hover:text-red-400 transition-colors flex items-center gap-1" title="入力内容をクリア">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                <span class="hidden sm:inline">クリア</span>
+              </button>
             </div>
             <textarea id="srcText" class="flex-1 w-full bg-transparent p-4 text-sm leading-relaxed resize-none focus:outline-none font-mono text-slate-800 dark:text-slate-300 placeholder-slate-400 dark:placeholder-slate-600" placeholder="ここにテキストが表示されます..."></textarea>
           </div>
@@ -418,54 +430,57 @@
   </template>
 
   <script>
-    // State
-    const state = {
-      text: '',
-      rules: [], // { id, key, type, val, active }
-      mode: 'alias' // 'alias' or 'blackout'
-    };
+    document.addEventListener('DOMContentLoaded', () => {
+        // State
+        const state = {
+          text: '',
+          rules: [], // { id, key, type, val, active }
+          mode: 'alias' // 'alias' or 'blackout'
+        };
 
-    // DOM Elements
-    const els = {
-      dropzone: document.getElementById('dropzone'),
-      fileInput: document.getElementById('fileInput'),
-      srcText: document.getElementById('srcText'),
-      dstText: document.getElementById('dstText'),
-      rulesList: document.getElementById('rulesList'),
-      progress: document.getElementById('progressContainer'),
-      progressBar: document.getElementById('progressBar'),
-      progressText: document.getElementById('progressText'),
-      toast: document.getElementById('toast'),
-      toastMsg: document.getElementById('toastMsg'),
-      toastIndicator: document.getElementById('toastIndicator'),
-      btnDemo: document.getElementById('btnDemo'),
-      btnExport: document.getElementById('btnExport'),
-      btnClearData: document.getElementById('btnClearData'),
-      btnCopy: document.getElementById('btnCopy'),
-      btnAddRule: document.getElementById('btnAddRule'),
-      modeAlias: document.getElementById('modeAlias'),
-      modeBlackout: document.getElementById('modeBlackout'),
-      btnSettings: document.getElementById('btnSettings'),
-      settingsPanel: document.getElementById('settingsPanel'),
-      btnHelp: document.getElementById('btnHelp'),
-      helpPanel: document.getElementById('helpPanel'),
-      themeDark: document.getElementById('themeDark'),
-      themeLight: document.getElementById('themeLight'),
-      // Rules IO
-      btnExportRules: document.getElementById('btnExportRules'),
-      btnImportRules: document.getElementById('btnImportRules'),
-      rulesFileInput: document.getElementById('rulesFileInput'),
-      // Stats
-      statsBadge: document.getElementById('statsBadge'),
-      // Mobile Tabs
-      tabSrc: document.getElementById('tabSrc'),
-      tabDst: document.getElementById('tabDst'),
-      panelSrc: document.getElementById('panelSrc'),
-      panelDst: document.getElementById('panelDst')
-    };
+        // DOM Elements
+        const els = {
+          dropzone: document.getElementById('dropzone'),
+          fileInput: document.getElementById('fileInput'),
+          srcText: document.getElementById('srcText'),
+          dstText: document.getElementById('dstText'),
+          rulesList: document.getElementById('rulesList'),
+          progress: document.getElementById('progressContainer'),
+          progressBar: document.getElementById('progressBar'),
+          progressText: document.getElementById('progressText'),
+          progressPercent: document.getElementById('progressPercent'), // Ensure this is definitely picked up
+          toast: document.getElementById('toast'),
+          toastMsg: document.getElementById('toastMsg'),
+          toastIndicator: document.getElementById('toastIndicator'),
+          btnDemo: document.getElementById('btnDemo'),
+          btnExport: document.getElementById('btnExport'),
+          btnClearData: document.getElementById('btnClearData'),
+          btnQuickClear: document.getElementById('btnQuickClear'),
+          btnCopy: document.getElementById('btnCopy'),
+          btnAddRule: document.getElementById('btnAddRule'),
+          modeAlias: document.getElementById('modeAlias'),
+          modeBlackout: document.getElementById('modeBlackout'),
+          btnSettings: document.getElementById('btnSettings'),
+          settingsPanel: document.getElementById('settingsPanel'),
+          btnHelp: document.getElementById('btnHelp'),
+          helpPanel: document.getElementById('helpPanel'),
+          themeDark: document.getElementById('themeDark'),
+          themeLight: document.getElementById('themeLight'),
+          // Rules IO
+          btnExportRules: document.getElementById('btnExportRules'),
+          btnImportRules: document.getElementById('btnImportRules'),
+          rulesFileInput: document.getElementById('rulesFileInput'),
+          // Stats
+          statsBadge: document.getElementById('statsBadge'),
+          // Mobile Tabs
+          tabSrc: document.getElementById('tabSrc'),
+          tabDst: document.getElementById('tabDst'),
+          panelSrc: document.getElementById('panelSrc'),
+          panelDst: document.getElementById('panelDst')
+        };
 
-    // Demo Data
-    const DEMO_TEXT = `【機密保持に関する合意書】
+        // Demo Data
+        const DEMO_TEXT = `【機密保持に関する合意書】
 
 甲：株式会社ABCテクノロジーズ
 乙：山田 太郎
@@ -480,21 +495,21 @@
 
 連絡先：03-1234-5678 (担当：佐藤 花子)`;
 
-    const INITIAL_RULES = [
-      { key: '株式会社ABCテクノロジーズ', type: '法人', val: '甲社', id: 'r1' },
-      { key: '山田 太郎', type: '個人', val: '乙氏', id: 'r2' },
-      { key: '東京都渋谷区神南1-1-1', type: '住所', val: '甲の所在地', id: 'r3' },
-      { key: '東京都世田谷区北沢2-2-2', type: '住所', val: '乙の居住地', id: 'r4' },
-      { key: 'Project Alpha', type: '機密', val: '本件プロジェクト', id: 'r5' },
-      { key: '佐藤 花子', type: '個人', val: '担当者A', id: 'r6' },
-      { key: '03-1234-5678', type: '電話', val: '連絡先X', id: 'r7' }
-    ];
-    
-    // OCR Simulation Data (Mock Contracts)
-    const MOCK_CONTRACTS = [
-      {
-        title: "業務委託契約書（サンプル）",
-        content: `業務委託契約書
+        const INITIAL_RULES = [
+          { key: '株式会社ABCテクノロジーズ', type: '法人', val: '甲社', id: 'r1' },
+          { key: '山田 太郎', type: '個人', val: '乙氏', id: 'r2' },
+          { key: '東京都渋谷区神南1-1-1', type: '住所', val: '甲の所在地', id: 'r3' },
+          { key: '東京都世田谷区北沢2-2-2', type: '住所', val: '乙の居住地', id: 'r4' },
+          { key: 'Project Alpha', type: '機密', val: '本件プロジェクト', id: 'r5' },
+          { key: '佐藤 花子', type: '個人', val: '担当者A', id: 'r6' },
+          { key: '03-1234-5678', type: '電話', val: '連絡先X', id: 'r7' }
+        ];
+        
+        // OCR Simulation Data (Mock Contracts)
+        const MOCK_CONTRACTS = [
+          {
+            title: "業務委託契約書（サンプル）",
+            content: `業務委託契約書
 
 委託者：株式会社イノベーション・ジャパン（以下「甲」という）と、
 受託者：鈴木 一郎（以下「乙」という）は、以下の通り業務委託契約を締結する。
@@ -512,10 +527,10 @@
 
 日付：2026年4月1日
 `
-      },
-      {
-        title: "秘密保持誓約書（サンプル）",
-        content: `秘密保持誓約書
+          },
+          {
+            title: "秘密保持誓約書（サンプル）",
+            content: `秘密保持誓約書
 
 株式会社フューチャー・システムズ 御中
 
@@ -530,501 +545,577 @@
 2. 目的外使用の禁止
 私は、秘密情報を本取引の遂行以外の目的で使用しません。
 `
-      }
-    ];
+          }
+        ];
 
-    // Functions
-    const showToast = (msg, type='success') => {
-      els.toastMsg.textContent = msg;
-      
-      // Reset indicator
-      els.toastIndicator.className = 'w-2 h-2 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.2)] flex-shrink-0';
-      
-      // Color logic
-      if(type === 'success') {
-          els.toastIndicator.classList.add('bg-emerald-400', 'shadow-[0_0_8px_rgba(52,211,153,0.5)]');
-      } else if (type === 'error') {
-          els.toastIndicator.classList.add('bg-red-400', 'shadow-[0_0_8px_rgba(248,113,113,0.5)]');
-      } else if (type === 'info') {
-          els.toastIndicator.classList.add('bg-blue-400', 'shadow-[0_0_8px_rgba(96,165,250,0.5)]');
-      } else {
-          // Default/Warning
-          els.toastIndicator.classList.add('bg-amber-400', 'shadow-[0_0_8px_rgba(251,191,36,0.5)]');
-      }
+        // Functions
+        const showToast = (msg, type='success') => {
+          if (!els.toast || !els.toastMsg || !els.toastIndicator) return;
+          els.toastMsg.textContent = msg;
+          
+          // Reset indicator
+          els.toastIndicator.className = 'w-2 h-2 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.2)] flex-shrink-0';
+          
+          // Color logic
+          if(type === 'success') {
+              els.toastIndicator.classList.add('bg-emerald-400', 'shadow-[0_0_8px_rgba(52,211,153,0.5)]');
+          } else if (type === 'error') {
+              els.toastIndicator.classList.add('bg-red-400', 'shadow-[0_0_8px_rgba(248,113,113,0.5)]');
+          } else if (type === 'info') {
+              els.toastIndicator.classList.add('bg-blue-400', 'shadow-[0_0_8px_rgba(96,165,250,0.5)]');
+          } else {
+              // Default/Warning
+              els.toastIndicator.classList.add('bg-amber-400', 'shadow-[0_0_8px_rgba(251,191,36,0.5)]');
+          }
 
-      els.toast.classList.remove('translate-y-20', 'opacity-0');
-      
-      // Auto hide duration based on length
-      const duration = msg.length > 20 ? 4500 : 3000;
-      setTimeout(() => els.toast.classList.add('translate-y-20', 'opacity-0'), duration);
-    };
+          els.toast.classList.remove('translate-y-20', 'opacity-0');
+          
+          // Auto hide duration based on length
+          const duration = msg.length > 20 ? 4500 : 3000;
+          setTimeout(() => els.toast.classList.add('translate-y-20', 'opacity-0'), duration);
+        };
 
-    // Debounce Function
-    const debounce = (func, wait) => {
-      let timeout;
-      return function(...args) {
-        const context = this;
-        clearTimeout(timeout);
-        timeout = setTimeout(() => func.apply(context, args), wait);
-      };
-    };
+        // Debounce Function
+        const debounce = (func, wait) => {
+          let timeout;
+          return function(...args) {
+            const context = this;
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(context, args), wait);
+          };
+        };
 
-    const processAnonymization = () => {
-      let result = els.srcText.value;
-      if (!result) {
-        els.dstText.innerHTML = '<span class="text-slate-400 dark:text-slate-600 italic">待機中...</span>';
-        updateStats(0);
-        return;
-      }
+        const processAnonymization = () => {
+          if (!els.srcText) return;
+          let result = els.srcText.value;
+          if (!result) {
+            if(els.dstText) els.dstText.innerHTML = '<span class="text-slate-400 dark:text-slate-600 italic">待機中...</span>';
+            updateStats(0);
+            return;
+          }
 
-      const activeRules = [...state.rules].sort((a, b) => b.key.length - a.key.length);
-      let totalReplacements = 0;
-      const ruleCounts = {};
+          const activeRules = [...state.rules].sort((a, b) => b.key.length - a.key.length);
+          let totalReplacements = 0;
+          const ruleCounts = {};
 
-      activeRules.forEach(rule => {
-        if (!rule.key || !rule.val) return;
-        
-        const escapedKey = rule.key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const regex = new RegExp(escapedKey, 'g');
-        
-        // Count matches
-        const matches = result.match(regex);
-        const count = matches ? matches.length : 0;
-        ruleCounts[rule.id] = count;
-        totalReplacements += count;
-
-        const replacement = state.mode === 'blackout' 
-          ? '█'.repeat(Math.min(rule.key.length, 6))
-          : rule.val;
-
-        result = result.replace(regex, `<span class="bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 px-0.5 rounded box-decoration-clone transition-all" title="${rule.key} → ${replacement}">${replacement}</span>`);
-      });
-
-      els.dstText.innerHTML = result.replace(/\n/g, '<br>');
-      
-      // Update stats and UI
-      updateStats(totalReplacements);
-      updateRuleCounts(ruleCounts);
-    };
-    
-    // Debounced version of processing
-    const processAnonymizationDebounced = debounce(processAnonymization, 300);
-
-    const updateStats = (count) => {
-        if(count > 0) {
-            els.statsBadge.textContent = `${count}箇所`;
-            els.statsBadge.classList.remove('hidden');
-        } else {
-            els.statsBadge.classList.add('hidden');
-        }
-    };
-
-    const updateRuleCounts = (counts) => {
-        document.querySelectorAll('.rule-item').forEach(el => {
-            const id = el.dataset.id;
-            const countEl = el.querySelector('.rule-count');
-            const count = counts[id] || 0;
+          activeRules.forEach(rule => {
+            if (!rule.key || !rule.val) return;
             
-            countEl.textContent = `x${count}`;
+            const escapedKey = rule.key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(escapedKey, 'g');
+            
+            // Count matches
+            const matches = result.match(regex);
+            const count = matches ? matches.length : 0;
+            ruleCounts[rule.id] = count;
+            totalReplacements += count;
+
+            const replacement = state.mode === 'blackout' 
+              ? '█'.repeat(Math.min(rule.key.length, 6))
+              : rule.val;
+
+            result = result.replace(regex, `<span class="bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 px-0.5 rounded box-decoration-clone transition-all" title="${rule.key} → ${replacement}">${replacement}</span>`);
+          });
+
+          if(els.dstText) els.dstText.innerHTML = result.replace(/\n/g, '<br>');
+          
+          // Update stats and UI
+          updateStats(totalReplacements);
+          updateRuleCounts(ruleCounts);
+        };
+        
+        // Debounced version of processing
+        const processAnonymizationDebounced = debounce(processAnonymization, 300);
+
+        const updateStats = (count) => {
+            if (!els.statsBadge) return;
             if(count > 0) {
-                countEl.classList.remove('hidden');
-                countEl.classList.add('text-emerald-500', 'font-bold');
+                els.statsBadge.textContent = `${count}箇所`;
+                els.statsBadge.classList.remove('hidden');
             } else {
-                // Keep showing 0 but dim
-                countEl.classList.remove('hidden', 'text-emerald-500', 'font-bold');
-            }
-        });
-    };
-
-    const createRuleElement = (rule) => {
-      const tpl = document.getElementById('ruleTemplate');
-      const clone = tpl.content.cloneNode(true);
-      const div = clone.querySelector('.rule-item');
-      
-      div.dataset.id = rule.id;
-      div.querySelector('.rule-key').textContent = rule.key;
-      
-      const typeSpan = div.querySelector('.tag');
-      typeSpan.textContent = rule.type;
-      
-      if(rule.type === '法人') typeSpan.className = "tag text-[10px] px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-600 dark:text-blue-300 whitespace-nowrap";
-      if(rule.type === '個人') typeSpan.className = "tag text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/20 text-purple-600 dark:text-purple-300 whitespace-nowrap";
-      if(rule.type === '機密') typeSpan.className = "tag text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-600 dark:text-red-300 whitespace-nowrap";
-
-      const input = div.querySelector('.rule-val');
-      input.value = rule.val;
-      input.addEventListener('input', (e) => {
-        rule.val = e.target.value;
-        processAnonymizationDebounced();
-      });
-
-      div.querySelector('.btn-remove').addEventListener('click', () => {
-        state.rules = state.rules.filter(r => r.id !== rule.id);
-        div.remove();
-        processAnonymization();
-      });
-
-      return div;
-    };
-
-    const renderRules = () => {
-      els.rulesList.innerHTML = '';
-      state.rules.forEach(rule => {
-        els.rulesList.appendChild(createRuleElement(rule));
-      });
-    };
-
-    const addCustomRule = () => {
-      const selection = window.getSelection().toString().trim();
-      const key = selection || "新しいキーワード";
-      const id = 'custom-' + Date.now();
-      const newRule = { key: key, type: '手動', val: '置換テキスト', id: id };
-      state.rules.unshift(newRule);
-      renderRules();
-      processAnonymization();
-      
-      setTimeout(() => {
-        const row = els.rulesList.querySelector(`[data-id="${id}"]`);
-        if(row) row.querySelector('input').focus();
-      }, 50);
-    };
-
-    const setMode = (mode) => {
-      state.mode = mode;
-      if (mode === 'alias') {
-        els.modeAlias.className = "px-2 py-1 text-xs rounded-md bg-slate-300 dark:bg-slate-600 text-slate-800 dark:text-white shadow transition-all";
-        els.modeBlackout.className = "px-2 py-1 text-xs rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-all";
-        document.querySelectorAll('.rule-val').forEach(el => {
-          el.disabled = false;
-          el.classList.remove('opacity-50');
-        });
-      } else {
-        els.modeBlackout.className = "px-2 py-1 text-xs rounded-md bg-slate-300 dark:bg-slate-600 text-slate-800 dark:text-white shadow transition-all";
-        els.modeAlias.className = "px-2 py-1 text-xs rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-all";
-        document.querySelectorAll('.rule-val').forEach(el => {
-          el.disabled = true;
-          el.classList.add('opacity-50');
-        });
-      }
-      processAnonymization();
-      showToast(mode === 'alias' ? 'エイリアス置換モード' : '黒塗りモード');
-    };
-
-    // Mobile Tabs
-    const switchTab = (tab) => {
-        if(tab === 'src') {
-            els.tabSrc.className = 'flex-1 py-2 text-sm font-medium tab-active transition-colors';
-            els.tabDst.className = 'flex-1 py-2 text-sm font-medium tab-inactive transition-colors';
-            els.panelSrc.classList.remove('hidden', 'z-0');
-            els.panelSrc.classList.add('flex', 'z-10');
-            els.panelDst.classList.add('hidden');
-        } else {
-            els.tabDst.className = 'flex-1 py-2 text-sm font-medium tab-active transition-colors';
-            els.tabSrc.className = 'flex-1 py-2 text-sm font-medium tab-inactive transition-colors';
-            els.panelDst.classList.remove('hidden');
-            els.panelDst.classList.add('flex', 'z-10');
-            els.panelSrc.classList.add('hidden');
-        }
-    };
-    els.tabSrc.addEventListener('click', () => switchTab('src'));
-    els.tabDst.addEventListener('click', () => switchTab('dst'));
-
-
-    // Toggle Popover
-    const togglePanel = (btn, panel) => {
-        const isHidden = panel.classList.contains('hidden');
-        // Close others
-        [els.settingsPanel, els.helpPanel].forEach(p => p.classList.add('hidden'));
-        
-        if(isHidden) {
-            panel.classList.remove('hidden');
-        } else {
-            panel.classList.add('hidden');
-        }
-    };
-    
-    // Theme Switch
-    const setTheme = (theme) => {
-        if(theme === 'dark') {
-            document.documentElement.classList.add('dark');
-            els.themeDark.classList.add('bg-white', 'text-black', 'shadow');
-            els.themeDark.classList.remove('text-slate-500');
-            els.themeLight.classList.remove('bg-white', 'text-black', 'shadow');
-            els.themeLight.classList.add('text-slate-500');
-        } else {
-            document.documentElement.classList.remove('dark');
-            els.themeLight.classList.add('bg-white', 'text-black', 'shadow');
-            els.themeLight.classList.remove('text-slate-500');
-            els.themeDark.classList.remove('bg-white', 'text-black', 'shadow');
-            els.themeDark.classList.add('text-slate-500');
-        }
-    };
-
-    // Fallback Copy Function
-    function fallbackCopyTextToClipboard(text) {
-      const textArea = document.createElement("textarea");
-      textArea.value = text;
-      
-      // Ensure it's not visible but part of the DOM
-      textArea.style.top = "0";
-      textArea.style.left = "0";
-      textArea.style.position = "fixed";
-      textArea.style.opacity = "0";
-
-      document.body.appendChild(textArea);
-      textArea.focus();
-      textArea.select();
-
-      try {
-        const successful = document.execCommand('copy');
-        const msg = successful ? 'クリップボードにコピーしました' : 'コピーに失敗しました';
-        showToast(msg, successful ? 'success' : 'error');
-      } catch (err) {
-        showToast('コピーできませんでした', 'error');
-        console.error('Fallback copy failed', err);
-      }
-
-      document.body.removeChild(textArea);
-    }
-
-    // Rules Export/Import
-    els.btnExportRules.addEventListener('click', () => {
-        if(state.rules.length === 0) {
-            // Show guide message instead of error
-            return showToast('保存できるルールがまだありません。\nまずはテキストを読み込んでみてください。', 'info');
-        }
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state.rules));
-        const a = document.createElement('a');
-        a.href = dataStr;
-        a.download = `quiet_rules_${new Date().toISOString().slice(0,10)}.json`;
-        a.click();
-        showToast('ルールをJSONで保存しました');
-        els.settingsPanel.classList.add('hidden');
-    });
-
-    els.btnImportRules.addEventListener('click', () => {
-        els.rulesFileInput.click();
-    });
-
-    els.rulesFileInput.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if(!file) return;
-        
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const rules = JSON.parse(e.target.result);
-                if(Array.isArray(rules)) {
-                    state.rules = rules;
-                    renderRules();
-                    processAnonymization();
-                    showToast('ルールを読み込みました');
-                    els.settingsPanel.classList.add('hidden');
-                } else {
-                    throw new Error("Invalid format");
-                }
-            } catch (err) {
-                showToast('ファイルの読み込みに失敗しました', 'error');
+                els.statsBadge.classList.add('hidden');
             }
         };
-        reader.readAsText(file);
-        // Reset
-        els.rulesFileInput.value = '';
-    });
 
-
-    // Event Listeners
-    els.srcText.addEventListener('input', (e) => {
-      state.text = e.target.value;
-      processAnonymizationDebounced(); // Use debounced version
-    });
-
-    els.btnDemo.addEventListener('click', () => {
-      els.srcText.value = DEMO_TEXT;
-      state.text = DEMO_TEXT;
-      state.rules = JSON.parse(JSON.stringify(INITIAL_RULES));
-      renderRules();
-      processAnonymization();
-      showToast('デモデータを読み込みました');
-      els.settingsPanel.classList.add('hidden');
-    });
-
-    els.btnClearData.addEventListener('click', () => {
-      // confirm() might fail in iframe
-      // if(!confirm("全てクリアしますか？")) return; 
-      
-      els.srcText.value = '';
-      state.text = ''; // Sync state
-      state.rules = [];
-      els.dstText.innerHTML = '';
-      
-      renderRules();
-      updateStats(0);
-      
-      showToast('全データを消去しました', 'success'); // Changed message slightly
-      els.settingsPanel.classList.add('hidden');
-    });
-
-    els.btnCopy.addEventListener('click', () => {
-      const text = els.dstText.innerText;
-      
-      // Try modern API first
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(() => {
-          showToast('クリップボードにコピーしました');
-        }).catch(err => {
-          // Fallback if permission denied or failed
-          console.warn('Clipboard API failed, using fallback', err);
-          fallbackCopyTextToClipboard(text);
-        });
-      } else {
-        // Fallback for older browsers or restricted environments
-        fallbackCopyTextToClipboard(text);
-      }
-    });
-
-    els.btnExport.addEventListener('click', () => {
-      if(!els.dstText.innerText) {
-          return showToast('保存する内容が空です。\nプレビューに文字が表示されてからお試しください。', 'info');
-      }
-      
-      const text = els.dstText.innerText;
-      const blob = new Blob([text], {type: 'text/plain'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `quiet_doc_${new Date().toISOString().slice(0,10)}.txt`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      showToast('テキストファイルとして保存しました');
-    });
-
-    els.btnAddRule.addEventListener('click', addCustomRule);
-
-    els.modeAlias.addEventListener('click', () => setMode('alias'));
-    els.modeBlackout.addEventListener('click', () => setMode('blackout'));
-    
-    // Header Buttons
-    els.btnSettings.addEventListener('click', (e) => {
-        e.stopPropagation();
-        togglePanel(els.btnSettings, els.settingsPanel);
-    });
-    
-    els.btnHelp.addEventListener('click', (e) => {
-        e.stopPropagation();
-        togglePanel(els.btnHelp, els.helpPanel);
-    });
-
-    els.themeDark.addEventListener('click', () => setTheme('dark'));
-    els.themeLight.addEventListener('click', () => setTheme('light'));
-
-    // Close popovers on outside click
-    document.addEventListener('click', (e) => {
-        if(!els.settingsPanel.contains(e.target) && !els.btnSettings.contains(e.target)) {
-            els.settingsPanel.classList.add('hidden');
-        }
-        if(!els.helpPanel.contains(e.target) && !els.btnHelp.contains(e.target)) {
-            els.helpPanel.classList.add('hidden');
-        }
-    });
-
-    // Drag & Drop / File Loading
-    const handleFile = (file) => {
-      if (!file) return;
-      
-      els.progress.classList.remove('hidden');
-      els.dropzone.classList.add('opacity-50', 'pointer-events-none');
-      
-      let p = 0;
-      const interval = setInterval(() => {
-        p += Math.random() * 20;
-        if (p > 100) p = 100;
-        els.progressBar.style.width = p + '%';
-        els.progressPercent.textContent = Math.floor(p) + '%';
-        
-        if (p === 100) {
-          clearInterval(interval);
-          setTimeout(() => {
-            els.progress.classList.add('hidden');
-            els.dropzone.classList.remove('opacity-50', 'pointer-events-none');
-            els.progressBar.style.width = '0%';
-            
-            if (file.type.match('text.*')) {
-              // Real Text File
-              const reader = new FileReader();
-              reader.onload = (e) => {
-                els.srcText.value = e.target.result;
-                state.text = e.target.result;
-                if (state.rules.length === 0) {
-                    state.rules = [{ key: 'サンプル', type: '自動', val: '***', id: 'auto1' }];
-                    renderRules();
+        const updateRuleCounts = (counts) => {
+            document.querySelectorAll('.rule-item').forEach(el => {
+                const id = el.dataset.id;
+                const countEl = el.querySelector('.rule-count');
+                const count = counts[id] || 0;
+                
+                if (countEl) {
+                    countEl.textContent = `x${count}`;
+                    if(count > 0) {
+                        countEl.classList.remove('hidden');
+                        countEl.classList.add('text-emerald-500', 'font-bold');
+                    } else {
+                        // Keep showing 0 but dim
+                        countEl.classList.remove('hidden', 'text-emerald-500', 'font-bold');
+                    }
                 }
+            });
+        };
+
+        const createRuleElement = (rule) => {
+          const tpl = document.getElementById('ruleTemplate');
+          const clone = tpl.content.cloneNode(true);
+          const div = clone.querySelector('.rule-item');
+          
+          div.dataset.id = rule.id;
+          const keyEl = div.querySelector('.rule-key');
+          if(keyEl) keyEl.textContent = rule.key;
+          
+          const typeSpan = div.querySelector('.tag');
+          if(typeSpan) typeSpan.textContent = rule.type;
+          
+          if(rule.type === '法人' && typeSpan) typeSpan.className = "tag text-[10px] px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-600 dark:text-blue-300 whitespace-nowrap";
+          if(rule.type === '個人' && typeSpan) typeSpan.className = "tag text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/20 text-purple-600 dark:text-purple-300 whitespace-nowrap";
+          if(rule.type === '機密' && typeSpan) typeSpan.className = "tag text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-600 dark:text-red-300 whitespace-nowrap";
+
+          const input = div.querySelector('.rule-val');
+          if(input) {
+              input.value = rule.val;
+              input.addEventListener('input', (e) => {
+                rule.val = e.target.value;
+                processAnonymizationDebounced();
+              });
+          }
+
+          const btnRemove = div.querySelector('.btn-remove');
+          if(btnRemove) {
+              btnRemove.addEventListener('click', () => {
+                state.rules = state.rules.filter(r => r.id !== rule.id);
+                div.remove();
                 processAnonymization();
-                showToast(`${file.name} を読み込みました`);
-              };
-              reader.readAsText(file);
+              });
+          }
+
+          return div;
+        };
+
+        const renderRules = () => {
+          if(!els.rulesList) return;
+          els.rulesList.innerHTML = '';
+          state.rules.forEach(rule => {
+            els.rulesList.appendChild(createRuleElement(rule));
+          });
+        };
+
+        const addCustomRule = () => {
+          const selection = window.getSelection().toString().trim();
+          const key = selection || "新しいキーワード";
+          const id = 'custom-' + Date.now();
+          const newRule = { key: key, type: '手動', val: '置換テキスト', id: id };
+          state.rules.unshift(newRule);
+          renderRules();
+          processAnonymization();
+          
+          setTimeout(() => {
+            const row = els.rulesList.querySelector(`[data-id="${id}"]`);
+            if(row && row.querySelector('input')) row.querySelector('input').focus();
+          }, 50);
+        };
+
+        const setMode = (mode) => {
+          state.mode = mode;
+          if (mode === 'alias') {
+            if(els.modeAlias) els.modeAlias.className = "px-2 py-1 text-xs rounded-md bg-slate-300 dark:bg-slate-600 text-slate-800 dark:text-white shadow transition-all";
+            if(els.modeBlackout) els.modeBlackout.className = "px-2 py-1 text-xs rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-all";
+            document.querySelectorAll('.rule-val').forEach(el => {
+              el.disabled = false;
+              el.classList.remove('opacity-50');
+            });
+          } else {
+            if(els.modeBlackout) els.modeBlackout.className = "px-2 py-1 text-xs rounded-md bg-slate-300 dark:bg-slate-600 text-slate-800 dark:text-white shadow transition-all";
+            if(els.modeAlias) els.modeAlias.className = "px-2 py-1 text-xs rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-all";
+            document.querySelectorAll('.rule-val').forEach(el => {
+              el.disabled = true;
+              el.classList.add('opacity-50');
+            });
+          }
+          processAnonymization();
+          showToast(mode === 'alias' ? 'エイリアス置換モード' : '黒塗りモード');
+        };
+
+        // Mobile Tabs
+        const switchTab = (tab) => {
+            if(tab === 'src') {
+                if(els.tabSrc) els.tabSrc.className = 'flex-1 py-2 text-sm font-medium tab-active transition-colors';
+                if(els.tabDst) els.tabDst.className = 'flex-1 py-2 text-sm font-medium tab-inactive transition-colors';
+                if(els.panelSrc) {
+                    els.panelSrc.classList.remove('hidden', 'z-0');
+                    els.panelSrc.classList.add('flex', 'z-10');
+                }
+                if(els.panelDst) els.panelDst.classList.add('hidden');
             } else {
-              // PDF/Image Simulation
-              const mock = MOCK_CONTRACTS[Math.floor(Math.random() * MOCK_CONTRACTS.length)];
-              
-              showToast('OCRシミュレーション実行完了');
-              els.srcText.value = `[OCR解析結果: ${file.name}]\n\n${mock.content}`;
-              state.text = els.srcText.value;
-              
-              // Add mock rules based on the selected template
-              if(mock.title.includes("業務委託")){
-                  state.rules = [
-                      { key: '株式会社イノベーション・ジャパン', type: '法人', val: '甲', id: 'm1' },
-                      { key: '鈴木 一郎', type: '個人', val: '乙', id: 'm2' },
-                      { key: '東京都港区六本木1-2-3', type: '住所', val: '甲のオフィス', id: 'm3' }
-                  ];
-              } else {
-                   state.rules = [
-                      { key: '株式会社フューチャー・システムズ', type: '法人', val: '貴社', id: 'm4' },
-                      { key: '田中 次郎', type: '個人', val: '私', id: 'm5' },
-                      { key: '大阪府大阪市北区梅田1-1-1', type: '住所', val: '住所地', id: 'm6' },
-                      { key: '06-1234-5678', type: '電話', val: '連絡先', id: 'm7' }
-                  ];
-              }
+                if(els.tabDst) els.tabDst.className = 'flex-1 py-2 text-sm font-medium tab-active transition-colors';
+                if(els.tabSrc) els.tabSrc.className = 'flex-1 py-2 text-sm font-medium tab-inactive transition-colors';
+                if(els.panelDst) {
+                    els.panelDst.classList.remove('hidden');
+                    els.panelDst.classList.add('flex', 'z-10');
+                }
+                if(els.panelSrc) els.panelSrc.classList.add('hidden');
+            }
+        };
+        if(els.tabSrc) els.tabSrc.addEventListener('click', () => switchTab('src'));
+        if(els.tabDst) els.tabDst.addEventListener('click', () => switchTab('dst'));
+
+
+        // Toggle Popover
+        const togglePanel = (btn, panel) => {
+            if(!panel) return;
+            const isHidden = panel.classList.contains('hidden');
+            // Close others
+            if(els.settingsPanel) els.settingsPanel.classList.add('hidden');
+            if(els.helpPanel) els.helpPanel.classList.add('hidden');
+            
+            if(isHidden) {
+                panel.classList.remove('hidden');
+            } else {
+                panel.classList.add('hidden');
+            }
+        };
+        
+        // Theme Switch
+        const setTheme = (theme) => {
+            if(theme === 'dark') {
+                document.documentElement.classList.add('dark');
+                if(els.themeDark) els.themeDark.classList.add('bg-white', 'text-black', 'shadow');
+                if(els.themeDark) els.themeDark.classList.remove('text-slate-500');
+                if(els.themeLight) els.themeLight.classList.remove('bg-white', 'text-black', 'shadow');
+                if(els.themeLight) els.themeLight.classList.add('text-slate-500');
+            } else {
+                document.documentElement.classList.remove('dark');
+                if(els.themeLight) els.themeLight.classList.add('bg-white', 'text-black', 'shadow');
+                if(els.themeLight) els.themeLight.classList.remove('text-slate-500');
+                if(els.themeDark) els.themeDark.classList.remove('bg-white', 'text-black', 'shadow');
+                if(els.themeDark) els.themeDark.classList.add('text-slate-500');
+            }
+        };
+
+        // Fallback Copy Function
+        function fallbackCopyTextToClipboard(text) {
+          const textArea = document.createElement("textarea");
+          textArea.value = text;
+          
+          // Ensure it's not visible but part of the DOM
+          textArea.style.top = "0";
+          textArea.style.left = "0";
+          textArea.style.position = "fixed";
+          textArea.style.opacity = "0";
+
+          document.body.appendChild(textArea);
+          textArea.focus();
+          textArea.select();
+
+          try {
+            const successful = document.execCommand('copy');
+            const msg = successful ? 'コピーしました。\nNotebookLMやChatGPTに安心して貼り付けられます✨' : 'コピーに失敗しました';
+            showToast(msg, successful ? 'success' : 'error');
+          } catch (err) {
+            showToast('コピーできませんでした', 'error');
+            console.error('Fallback copy failed', err);
+          }
+
+          document.body.removeChild(textArea);
+        }
+
+        // Rules Export/Import
+        if(els.btnExportRules) {
+            els.btnExportRules.addEventListener('click', () => {
+                if(state.rules.length === 0) {
+                    return showToast('保存できるルールがまだありません。\nまずはテキストを読み込んでみてください。', 'info');
+                }
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state.rules));
+                const a = document.createElement('a');
+                a.href = dataStr;
+                a.download = `quiet_rules_${new Date().toISOString().slice(0,10)}.json`;
+                a.click();
+                showToast('ルールをJSONで保存しました');
+                if(els.settingsPanel) els.settingsPanel.classList.add('hidden');
+            });
+        }
+
+        if(els.btnImportRules) {
+            els.btnImportRules.addEventListener('click', () => {
+                if(els.rulesFileInput) els.rulesFileInput.click();
+            });
+        }
+
+        if(els.rulesFileInput) {
+            els.rulesFileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if(!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const rules = JSON.parse(e.target.result);
+                        if(Array.isArray(rules)) {
+                            state.rules = rules;
+                            renderRules();
+                            processAnonymization();
+                            showToast('ルールを読み込みました');
+                            if(els.settingsPanel) els.settingsPanel.classList.add('hidden');
+                        } else {
+                            throw new Error("Invalid format");
+                        }
+                    } catch (err) {
+                        showToast('ファイルの読み込みに失敗しました', 'error');
+                    }
+                };
+                reader.readAsText(file);
+                els.rulesFileInput.value = '';
+            });
+        }
+
+
+        // Event Listeners
+        if(els.srcText) {
+            els.srcText.addEventListener('input', (e) => {
+              state.text = e.target.value;
+              processAnonymizationDebounced();
+            });
+        }
+
+        if(els.btnDemo) {
+            els.btnDemo.addEventListener('click', () => {
+              if(els.srcText) els.srcText.value = DEMO_TEXT;
+              state.text = DEMO_TEXT;
+              state.rules = JSON.parse(JSON.stringify(INITIAL_RULES));
               renderRules();
               processAnonymization();
-            }
-          }, 600);
+              showToast('デモデータを読み込みました');
+              if(els.settingsPanel) els.settingsPanel.classList.add('hidden');
+            });
         }
-      }, 100);
-    };
 
-    ['dragenter', 'dragover'].forEach(eventName => {
-      els.dropzone.addEventListener(eventName, (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        els.dropzone.classList.add('drop-active');
-      });
+        if(els.btnClearData) {
+            els.btnClearData.addEventListener('click', () => {
+              if(els.srcText) els.srcText.value = '';
+              state.text = '';
+              state.rules = [];
+              if(els.dstText) els.dstText.innerHTML = '';
+              
+              renderRules();
+              updateStats(0);
+              
+              showToast('全データを消去しました', 'success');
+              if(els.settingsPanel) els.settingsPanel.classList.add('hidden');
+            });
+        }
+
+        if(els.btnQuickClear) {
+            els.btnQuickClear.addEventListener('click', () => {
+                if(els.srcText && !els.srcText.value) return; 
+                
+                if(els.srcText) els.srcText.value = '';
+                state.text = '';
+                if(els.dstText) els.dstText.innerHTML = '';
+                
+                processAnonymization();
+                showToast('原文をクリアしました', 'info');
+            });
+        }
+
+        if(els.btnCopy) {
+            els.btnCopy.addEventListener('click', () => {
+              if(!els.dstText) return;
+              const text = els.dstText.innerText;
+              
+              if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
+                  showToast('コピーしました。\nNotebookLMやChatGPTに安心して貼り付けられます✨', 'success');
+                }).catch(err => {
+                  console.warn('Clipboard API failed, using fallback', err);
+                  fallbackCopyTextToClipboard(text);
+                });
+              } else {
+                fallbackCopyTextToClipboard(text);
+              }
+            });
+        }
+
+        if(els.btnExport) {
+            els.btnExport.addEventListener('click', () => {
+              if(!els.dstText || !els.dstText.innerText) {
+                  return showToast('保存する内容が空です。\nプレビューに文字が表示されてからお試しください。', 'info');
+              }
+              
+              const text = els.dstText.innerText;
+              const blob = new Blob([text], {type: 'text/plain'});
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `quiet_doc_${new Date().toISOString().slice(0,10)}.txt`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+              showToast('テキストファイルとして保存しました');
+            });
+        }
+
+        if(els.btnAddRule) els.btnAddRule.addEventListener('click', addCustomRule);
+
+        if(els.modeAlias) els.modeAlias.addEventListener('click', () => setMode('alias'));
+        if(els.modeBlackout) els.modeBlackout.addEventListener('click', () => setMode('blackout'));
+        
+        // Header Buttons
+        if(els.btnSettings) {
+            els.btnSettings.addEventListener('click', (e) => {
+                e.stopPropagation();
+                togglePanel(els.btnSettings, els.settingsPanel);
+            });
+        }
+        
+        if(els.btnHelp) {
+            els.btnHelp.addEventListener('click', (e) => {
+                e.stopPropagation();
+                togglePanel(els.btnHelp, els.helpPanel);
+            });
+        }
+
+        if(els.themeDark) els.themeDark.addEventListener('click', () => setTheme('dark'));
+        if(els.themeLight) els.themeLight.addEventListener('click', () => setTheme('light'));
+
+        // Close popovers on outside click
+        document.addEventListener('click', (e) => {
+            if(els.settingsPanel && !els.settingsPanel.contains(e.target) && els.btnSettings && !els.btnSettings.contains(e.target)) {
+                els.settingsPanel.classList.add('hidden');
+            }
+            if(els.helpPanel && !els.helpPanel.contains(e.target) && els.btnHelp && !els.btnHelp.contains(e.target)) {
+                els.helpPanel.classList.add('hidden');
+            }
+        });
+
+        // Drag & Drop / File Loading
+        const handleFile = (file) => {
+          if (!file) return;
+          
+          if(els.progress) els.progress.classList.remove('hidden');
+          if(els.dropzone) els.dropzone.classList.add('opacity-50', 'pointer-events-none');
+          
+          let p = 0;
+          let interval = null;
+          
+          const finishLoading = () => {
+            if(interval) clearInterval(interval);
+            
+            if(els.progress) els.progress.classList.add('hidden');
+            if(els.dropzone) els.dropzone.classList.remove('opacity-50', 'pointer-events-none');
+            if(els.progressBar) els.progressBar.style.width = '0%';
+            
+            try {
+                if (file.type.match('text.*')) {
+                  const reader = new FileReader();
+                  reader.onload = (e) => {
+                    if(els.srcText) els.srcText.value = e.target.result;
+                    state.text = e.target.result;
+                    if (state.rules.length === 0) {
+                        state.rules = [{ key: 'サンプル', type: '自動', val: '***', id: 'auto1' }];
+                        renderRules();
+                    }
+                    processAnonymization();
+                    showToast(`${file.name} を読み込みました`);
+                  };
+                  reader.onerror = () => {
+                      showToast('ファイルの読み込みに失敗しました', 'error');
+                  };
+                  reader.readAsText(file);
+                } else {
+                  const mock = MOCK_CONTRACTS[Math.floor(Math.random() * MOCK_CONTRACTS.length)];
+                  
+                  showToast('OCRシミュレーション実行完了');
+                  if(els.srcText) els.srcText.value = `[OCR解析結果: ${file.name}]\n\n${mock.content}`;
+                  state.text = els.srcText ? els.srcText.value : '';
+                  
+                  if(mock.title.includes("業務委託")){
+                      state.rules = [
+                          { key: '株式会社イノベーション・ジャパン', type: '法人', val: '甲', id: 'm1' },
+                          { key: '鈴木 一郎', type: '個人', val: '乙', id: 'm2' },
+                          { key: '東京都港区六本木1-2-3', type: '住所', val: '甲のオフィス', id: 'm3' }
+                      ];
+                  } else {
+                       state.rules = [
+                          { key: '株式会社フューチャー・システムズ', type: '法人', val: '貴社', id: 'm4' },
+                          { key: '田中 次郎', type: '個人', val: '私', id: 'm5' },
+                          { key: '大阪府大阪市北区梅田1-1-1', type: '住所', val: '住所地', id: 'm6' },
+                          { key: '06-1234-5678', type: '電話', val: '連絡先', id: 'm7' }
+                      ];
+                  }
+                  renderRules();
+                  processAnonymization();
+                }
+            } catch(e) {
+                console.error(e);
+                showToast('処理中にエラーが発生しました', 'error');
+            }
+          };
+
+          interval = setInterval(() => {
+            p += 5 + Math.random() * 15;
+            if (p >= 100) {
+                p = 100;
+                if(els.progressBar) els.progressBar.style.width = '100%';
+                if(els.progressPercent) els.progressPercent.textContent = '100%';
+                clearInterval(interval);
+                setTimeout(finishLoading, 400);
+            } else {
+                if(els.progressBar) els.progressBar.style.width = p + '%';
+                if(els.progressPercent) els.progressPercent.textContent = Math.floor(p) + '%';
+            }
+          }, 100);
+        };
+
+        const preventDefaults = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        };
+
+        const highlight = () => {
+          if(els.dropzone) els.dropzone.classList.add('drop-active');
+        };
+
+        const unhighlight = () => {
+          if(els.dropzone) els.dropzone.classList.remove('drop-active');
+        };
+
+        const handleDrop = (e) => {
+          const dt = e.dataTransfer;
+          if (dt && dt.files && dt.files.length > 0) {
+            handleFile(dt.files[0]);
+          }
+        };
+
+        if(els.dropzone) {
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+              els.dropzone.addEventListener(eventName, preventDefaults, false);
+            });
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+              els.dropzone.addEventListener(eventName, highlight, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+              els.dropzone.addEventListener(eventName, unhighlight, false);
+            });
+
+            els.dropzone.addEventListener('drop', handleDrop, false);
+        }
+
+        if(els.fileInput) {
+            els.fileInput.addEventListener('change', (e) => {
+              if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+              }
+            });
+        }
+
+        // Init
+        setMode('alias');
+        setTheme('dark');
     });
-
-    ['dragleave', 'drop'].forEach(eventName => {
-      els.dropzone.addEventListener(eventName, (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        els.dropzone.classList.remove('drop-active');
-      });
-    });
-
-    els.dropzone.addEventListener('drop', (e) => {
-      const dt = e.dataTransfer;
-      const file = dt.files[0];
-      handleFile(file);
-    });
-
-    els.fileInput.addEventListener('change', (e) => {
-      handleFile(e.target.files[0]);
-    });
-
-    // Init
-    setMode('alias');
-    setTheme('dark');
   </script>
 </body>
 </html>
