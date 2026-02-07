@@ -1,0 +1,1030 @@
+<!doctype html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Quiet Doc｜外に出さずに、資料を整える</title>
+  <meta name="description" content="Quiet Doc はPDF/画像の機微情報を文脈を保ったまま匿名化し、外部送信なしで整えるためのツールUI提案です。" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Inter"', '"Noto Sans JP"', 'sans-serif'],
+            mono: ['"Fira Code"', 'monospace'],
+          },
+          animation: {
+            'fade-in': 'fadeIn 0.2s ease-out',
+            'slide-in': 'slideIn 0.2s ease-out',
+          },
+          keyframes: {
+            fadeIn: {
+              '0%': { opacity: '0' },
+              '100%': { opacity: '1' },
+            },
+            slideIn: {
+              '0%': { transform: 'translateY(-10px)', opacity: '0' },
+              '100%': { transform: 'translateY(0)', opacity: '1' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap');
+    
+    :root {
+      /* Light Mode Variables */
+      --bg-color: #f1f5f9; /* slate-100 */
+      --text-main: #0f172a; /* slate-900 */
+      --text-sub: #64748b; /* slate-500 */
+      --glass-bg: rgba(255, 255, 255, 0.75);
+      --glass-border: rgba(203, 213, 225, 0.6); /* slate-300 */
+      --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
+      --accent-glow: rgba(56, 189, 248, 0.5);
+      --input-bg: rgba(255, 255, 255, 0.5);
+    }
+
+    .dark {
+      /* Dark Mode Variables */
+      --bg-color: #0f172a; /* slate-900 */
+      --text-main: #f1f5f9; /* slate-100 */
+      --text-sub: #94a3b8; /* slate-400 */
+      --glass-bg: rgba(30, 41, 59, 0.7); /* slate-800 */
+      --glass-border: rgba(255, 255, 255, 0.1);
+      --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+      --accent-glow: rgba(56, 189, 248, 0.15);
+      --input-bg: rgba(0, 0, 0, 0.2);
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      transition: background-color 0.3s, color 0.3s;
+    }
+    
+    /* Background gradients that adapt to theme */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      background-image: 
+        radial-gradient(at 0% 0%, var(--accent-glow) 0px, transparent 50%),
+        radial-gradient(at 100% 0%, rgba(168, 85, 247, 0.15) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(52, 211, 153, 0.15) 0px, transparent 50%);
+      pointer-events: none;
+    }
+
+    .glass-panel {
+      background: var(--glass-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--glass-shadow);
+      transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
+    }
+
+    .input-glass {
+      background: var(--input-bg);
+      border: 1px solid var(--glass-border);
+      color: var(--text-main);
+      transition: all 0.2s;
+    }
+    .input-glass:focus {
+      border-color: #38bdf8;
+      outline: none;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.5); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(156, 163, 175, 0.8); }
+
+    .shine-effect {
+      position: relative;
+      overflow: hidden;
+    }
+    .shine-effect::after {
+      content: '';
+      position: absolute;
+      top: 0; left: -100%;
+      width: 50%; height: 100%;
+      background: linear-gradient(to right, transparent, rgba(255,255,255,0.2), transparent);
+      transform: skewX(-20deg);
+      animation: shine 6s infinite;
+    }
+    @keyframes shine {
+      0%, 50% { left: -100%; }
+      60% { left: 200%; }
+      100% { left: 200%; }
+    }
+
+    .drop-active {
+      border-color: #38bdf8 !important;
+      background: rgba(56, 189, 248, 0.1) !important;
+      transform: scale(0.99);
+    }
+    
+    .popover {
+        transform-origin: top right;
+        transition: transform 0.2s ease-out, opacity 0.2s ease-out;
+    }
+    .popover.hidden {
+        display: none;
+    }
+
+    /* Mobile Tabs */
+    .tab-active {
+      border-bottom: 2px solid #38bdf8;
+      color: #38bdf8;
+    }
+    .tab-inactive {
+      border-bottom: 2px solid transparent;
+      color: var(--text-sub);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans antialiased selection:bg-accent selection:text-white">
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 glass-panel px-4 py-3 rounded-xl flex items-center gap-3">
+    <div id="toastIndicator" class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]"></div>
+    <span id="toastMsg" class="text-sm font-medium whitespace-pre-line">Notification</span>
+  </div>
+
+  <div class="flex-grow w-full max-w-7xl mx-auto p-4 md:p-8 space-y-6">
+    
+    <!-- Header -->
+    <header class="glass-panel rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 sticky top-2 z-40">
+      <div class="flex items-center gap-4 w-full md:w-auto">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-emerald-400 shadow-lg flex items-center justify-center shine-effect flex-shrink-0">
+          <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold tracking-tight">Quiet Doc</h1>
+          <p class="text-xs text-slate-500 dark:text-slate-400">外に出さずに、資料を整える</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 relative">
+        <div class="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-200/50 dark:bg-white/5 border border-slate-300 dark:border-white/10 text-xs text-slate-600 dark:text-slate-300">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+          外部送信なし
+        </div>
+        
+        <!-- Usage Button -->
+        <button id="btnHelp" class="p-2.5 rounded-xl hover:bg-slate-200/50 dark:hover:bg-white/10 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors" title="使い方">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+        </button>
+
+        <!-- Settings Button -->
+        <button id="btnSettings" class="p-2.5 rounded-xl hover:bg-slate-200/50 dark:hover:bg-white/10 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors" title="設定">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+        </button>
+
+        <!-- Export Button -->
+        <button id="btnExport" class="px-4 py-2 rounded-xl text-sm font-bold bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-400 hover:to-cyan-400 text-white shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+          <span class="hidden sm:inline">保存</span>
+        </button>
+
+        <!-- Help Popover -->
+        <div id="helpPanel" class="popover hidden absolute top-14 right-4 md:right-16 w-80 glass-panel rounded-2xl shadow-xl z-50 p-5">
+            <h3 class="font-bold text-slate-800 dark:text-slate-200 mb-2">使い方</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Quiet Docは、機微情報を外部に送信することなく、安全に資料を整えるためのツールです。</p>
+            <ul class="space-y-3 text-sm text-slate-600 dark:text-slate-300">
+                <li class="flex gap-3">
+                    <span class="flex-shrink-0 w-5 h-5 rounded-full bg-blue-500/20 text-blue-500 flex items-center justify-center text-xs font-bold">1</span>
+                    <span>資料（PDF/画像/テキスト）をドロップエリアに入れます。</span>
+                </li>
+                <li class="flex gap-3">
+                    <span class="flex-shrink-0 w-5 h-5 rounded-full bg-blue-500/20 text-blue-500 flex items-center justify-center text-xs font-bold">2</span>
+                    <span>機微情報が自動検出され、ルールとして表示されます。</span>
+                </li>
+                <li class="flex gap-3">
+                    <span class="flex-shrink-0 w-5 h-5 rounded-full bg-blue-500/20 text-blue-500 flex items-center justify-center text-xs font-bold">3</span>
+                    <span>ルールを編集して内容を整えます。黒塗りモードも可能です。</span>
+                </li>
+                <li class="flex gap-3">
+                    <span class="flex-shrink-0 w-5 h-5 rounded-full bg-blue-500/20 text-blue-500 flex items-center justify-center text-xs font-bold">4</span>
+                    <span>プレビューで確認後、[保存]ボタンでテキストを出力します。</span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Settings Popover -->
+        <div id="settingsPanel" class="popover hidden absolute top-14 right-0 w-64 glass-panel rounded-2xl shadow-xl z-50 p-4">
+            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">設定</h3>
+            
+            <!-- Theme Toggle -->
+            <div class="mb-4">
+                <label class="text-sm text-slate-700 dark:text-slate-300 block mb-2">色合い</label>
+                <div class="flex bg-slate-200 dark:bg-slate-800 rounded-lg p-1">
+                    <button id="themeDark" class="flex-1 py-1.5 text-xs rounded-md text-center transition-all">ダーク</button>
+                    <button id="themeLight" class="flex-1 py-1.5 text-xs rounded-md text-center transition-all">ライト</button>
+                </div>
+            </div>
+
+            <!-- Rules Management (Renamed for clarity) -->
+            <div class="mb-4">
+                <label class="text-sm text-slate-700 dark:text-slate-300 block mb-1">設定の保存・読込</label>
+                <p class="text-[10px] text-slate-500 dark:text-slate-400 mb-2 leading-relaxed">
+                    現在の置換ルールを保存して、<br>同じ案件や別の作業で再利用できます。
+                </p>
+                <div class="space-y-2">
+                    <button id="btnExportRules" class="w-full text-left px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 text-xs text-slate-600 dark:text-slate-400 transition-colors flex items-center gap-2">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        設定をPCに保存
+                    </button>
+                    <button id="btnImportRules" class="w-full text-left px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 text-xs text-slate-600 dark:text-slate-400 transition-colors flex items-center gap-2">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m-4-4v12" /></svg>
+                        保存した設定を読込
+                    </button>
+                    <input type="file" id="rulesFileInput" accept=".json" class="hidden">
+                </div>
+            </div>
+
+            <!-- Divider -->
+            <div class="h-px bg-slate-200 dark:bg-white/10 my-3"></div>
+
+            <!-- Demo Load -->
+            <button id="btnDemo" class="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 text-sm text-slate-700 dark:text-slate-300 transition-colors flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                デモデータ読込
+            </button>
+            <button id="btnClearData" class="w-full text-center text-xs text-slate-400 hover:text-red-500 transition-colors py-2 mt-1">
+                全データクリア
+            </button>
+        </div>
+
+      </div>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      
+      <!-- Main Content Area -->
+      <main class="lg:col-span-8 space-y-6">
+        
+        <!-- Dropzone / Input Area -->
+        <section class="glass-panel rounded-2xl p-6 relative group transition-all" id="dropzone">
+          <input type="file" id="fileInput" class="hidden" accept=".pdf,image/*,.txt" />
+          
+          <div class="flex flex-col items-center justify-center text-center py-8 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl transition-all group-hover:border-slate-400 dark:group-hover:border-slate-500 group-hover:bg-slate-50 dark:group-hover:bg-white/5 cursor-pointer" onclick="document.getElementById('fileInput').click()">
+            <div class="w-16 h-16 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+              <svg class="w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+            </div>
+            <h3 class="text-lg font-semibold text-slate-700 dark:text-slate-200">ファイルをドロップ</h3>
+            <p class="text-sm text-slate-500 mt-1">またはクリックして選択 (PDF, 画像, テキスト)</p>
+            <div class="mt-4 flex gap-2 justify-center flex-wrap">
+              <span class="px-2 py-1 rounded text-xs bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-300 dark:border-slate-700">OCR解析(デモ)</span>
+              <span class="px-2 py-1 rounded text-xs bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-300 dark:border-slate-700">自動検出</span>
+              <span class="px-2 py-1 rounded text-xs bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-300 dark:border-slate-700">完全ローカル</span>
+            </div>
+          </div>
+
+          <!-- Progress Bar (Simulated) -->
+          <div id="progressContainer" class="hidden mt-6">
+            <div class="flex justify-between text-xs text-slate-400 mb-2">
+              <span id="progressText">解析中...</span>
+              <span id="progressPercent">0%</span>
+            </div>
+            <div class="h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+              <div id="progressBar" class="h-full bg-gradient-to-r from-blue-500 to-emerald-400 w-0 transition-all duration-300"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Mobile Tabs -->
+        <div class="md:hidden flex border-b border-slate-200 dark:border-white/10 mb-4">
+          <button id="tabSrc" class="flex-1 py-2 text-sm font-medium tab-active transition-colors">原文</button>
+          <button id="tabDst" class="flex-1 py-2 text-sm font-medium tab-inactive transition-colors">プレビュー</button>
+        </div>
+
+        <!-- Editor Two Columns -->
+        <section class="grid grid-cols-1 md:grid-cols-2 gap-4 h-[500px] md:h-[600px] relative">
+          <!-- Original Text -->
+          <div id="panelSrc" class="glass-panel rounded-2xl flex flex-col overflow-hidden absolute inset-0 md:relative z-10 md:z-auto">
+            <div class="p-3 border-b border-slate-200 dark:border-white/10 bg-slate-100/50 dark:bg-black/20 flex justify-between items-center">
+              <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-2">原文 / 解析結果</span>
+            </div>
+            <textarea id="srcText" class="flex-1 w-full bg-transparent p-4 text-sm leading-relaxed resize-none focus:outline-none font-mono text-slate-800 dark:text-slate-300 placeholder-slate-400 dark:placeholder-slate-600" placeholder="ここにテキストが表示されます..."></textarea>
+          </div>
+
+          <!-- Anonymized Preview -->
+          <div id="panelDst" class="glass-panel rounded-2xl flex flex-col overflow-hidden border-emerald-500/20 shadow-[0_0_30px_rgba(16,185,129,0.05)] absolute inset-0 md:relative z-0 md:z-auto hidden md:flex">
+            <div class="p-3 border-b border-slate-200 dark:border-white/10 bg-emerald-500/5 dark:bg-emerald-900/10 flex justify-between items-center">
+              <div class="flex items-center gap-2">
+                  <span class="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider pl-2 flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    プレビュー
+                  </span>
+                  <span id="statsBadge" class="hidden text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 font-mono">0箇所</span>
+              </div>
+              <button id="btnCopy" class="text-xs text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-white transition-colors flex items-center gap-1">
+                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                コピー
+              </button>
+            </div>
+            <div id="dstText" class="flex-1 w-full bg-slate-50/50 dark:bg-black/20 p-4 text-sm leading-relaxed overflow-y-auto font-mono text-emerald-800 dark:text-emerald-50 font-medium whitespace-pre-wrap"></div>
+          </div>
+        </section>
+
+      </main>
+
+      <!-- Sidebar / Controls -->
+      <aside class="lg:col-span-4 space-y-6">
+        
+        <!-- Controls Panel -->
+        <div class="glass-panel rounded-2xl p-5">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-sm font-bold text-slate-700 dark:text-slate-200">置換ルール</h2>
+            <div class="flex bg-slate-200 dark:bg-slate-800 rounded-lg p-1">
+              <button class="px-2 py-1 text-xs rounded-md bg-slate-300 dark:bg-slate-600 text-slate-800 dark:text-white shadow" id="modeAlias">エイリアス</button>
+              <button class="px-2 py-1 text-xs rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white" id="modeBlackout">黒塗り</button>
+            </div>
+          </div>
+
+          <div class="space-y-3 max-h-[400px] overflow-y-auto pr-1" id="rulesList">
+            <!-- Dynamic Rules will be inserted here -->
+            <div class="text-center text-xs text-slate-400 dark:text-slate-500 py-8">
+              テキストを入力または<br>デモを読み込むと<br>候補が表示されます
+            </div>
+          </div>
+
+          <div class="mt-4 pt-4 border-t border-slate-200 dark:border-white/10">
+            <button id="btnAddRule" class="w-full py-2 rounded-xl border border-dashed border-slate-400 dark:border-slate-600 text-slate-500 dark:text-slate-400 text-xs hover:border-slate-600 dark:hover:border-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors">
+              + カスタムルールを追加
+            </button>
+          </div>
+        </div>
+
+        <!-- Info / Trust Panel -->
+        <div class="glass-panel rounded-2xl p-5 relative overflow-hidden">
+          <div class="absolute -right-4 -top-4 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl"></div>
+          
+          <h3 class="text-sm font-bold text-slate-700 dark:text-slate-200 mb-3">Quiet Doc の約束</h3>
+          <ul class="space-y-3">
+            <li class="flex items-start gap-3 text-xs text-slate-500 dark:text-slate-400">
+              <div class="mt-0.5 p-1 rounded bg-emerald-500/10 text-emerald-500 dark:text-emerald-400">
+                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+              </div>
+              <span><strong class="text-slate-700 dark:text-slate-200">完全ローカル処理</strong><br>データはブラウザから出ません。</span>
+            </li>
+            <li class="flex items-start gap-3 text-xs text-slate-500 dark:text-slate-400">
+              <div class="mt-0.5 p-1 rounded bg-blue-500/10 text-blue-500 dark:text-blue-400">
+                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+              </div>
+              <span><strong class="text-slate-700 dark:text-slate-200">文脈を破壊しない</strong><br>「誰が」やったかを保持します。</span>
+            </li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+    
+    <!-- Footer -->
+    <footer class="text-center py-4">
+        <p class="text-xs text-slate-400 dark:text-slate-600">テスト版（ベータ版） © 2026 SPC</p>
+    </footer>
+  </div>
+
+  <template id="ruleTemplate">
+    <div class="rule-item group bg-slate-100 dark:bg-white/5 rounded-xl p-2.5 border border-transparent hover:border-slate-300 dark:hover:border-slate-600 transition-colors animate-in fade-in slide-in-from-left-2">
+      <div class="flex justify-between items-center mb-2">
+        <div class="flex items-center gap-2 overflow-hidden">
+            <span class="text-xs font-mono text-slate-600 dark:text-slate-400 bg-slate-200 dark:bg-black/30 px-1.5 py-0.5 rounded truncate max-w-[100px] rule-key">TARGET</span>
+            <span class="rule-count text-[10px] text-slate-400 dark:text-slate-500 font-mono hidden">x0</span>
+        </div>
+        <div class="flex gap-1 flex-shrink-0">
+          <span class="tag text-[10px] px-1.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 whitespace-nowrap">種別</span>
+          <button class="text-slate-400 hover:text-red-400 btn-remove p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <svg class="w-3 h-3 text-slate-400 dark:text-slate-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+        <input type="text" class="rule-val w-full bg-white dark:bg-black/20 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-xs text-emerald-600 dark:text-emerald-300 focus:border-emerald-500 focus:outline-none placeholder-slate-400 dark:placeholder-slate-600 transition-colors" placeholder="置換後のテキスト">
+      </div>
+    </div>
+  </template>
+
+  <script>
+    // State
+    const state = {
+      text: '',
+      rules: [], // { id, key, type, val, active }
+      mode: 'alias' // 'alias' or 'blackout'
+    };
+
+    // DOM Elements
+    const els = {
+      dropzone: document.getElementById('dropzone'),
+      fileInput: document.getElementById('fileInput'),
+      srcText: document.getElementById('srcText'),
+      dstText: document.getElementById('dstText'),
+      rulesList: document.getElementById('rulesList'),
+      progress: document.getElementById('progressContainer'),
+      progressBar: document.getElementById('progressBar'),
+      progressText: document.getElementById('progressText'),
+      toast: document.getElementById('toast'),
+      toastMsg: document.getElementById('toastMsg'),
+      toastIndicator: document.getElementById('toastIndicator'),
+      btnDemo: document.getElementById('btnDemo'),
+      btnExport: document.getElementById('btnExport'),
+      btnClearData: document.getElementById('btnClearData'),
+      btnCopy: document.getElementById('btnCopy'),
+      btnAddRule: document.getElementById('btnAddRule'),
+      modeAlias: document.getElementById('modeAlias'),
+      modeBlackout: document.getElementById('modeBlackout'),
+      btnSettings: document.getElementById('btnSettings'),
+      settingsPanel: document.getElementById('settingsPanel'),
+      btnHelp: document.getElementById('btnHelp'),
+      helpPanel: document.getElementById('helpPanel'),
+      themeDark: document.getElementById('themeDark'),
+      themeLight: document.getElementById('themeLight'),
+      // Rules IO
+      btnExportRules: document.getElementById('btnExportRules'),
+      btnImportRules: document.getElementById('btnImportRules'),
+      rulesFileInput: document.getElementById('rulesFileInput'),
+      // Stats
+      statsBadge: document.getElementById('statsBadge'),
+      // Mobile Tabs
+      tabSrc: document.getElementById('tabSrc'),
+      tabDst: document.getElementById('tabDst'),
+      panelSrc: document.getElementById('panelSrc'),
+      panelDst: document.getElementById('panelDst')
+    };
+
+    // Demo Data
+    const DEMO_TEXT = `【機密保持に関する合意書】
+
+甲：株式会社ABCテクノロジーズ
+乙：山田 太郎
+
+東京都渋谷区神南1-1-1に所在する株式会社ABCテクノロジーズ（以下「甲」）と、東京都世田谷区北沢2-2-2に居住する山田 太郎（以下「乙」）は、以下の通り合意する。
+
+1. 機密情報の定義
+甲は、プロジェクト「Project Alpha」に関連する技術情報を乙に開示する。乙は、本情報を第三者に漏洩してはならない。
+
+2. 損害賠償
+乙が本契約に違反した場合、金1,000,000円を違約金として支払うものとする。
+
+連絡先：03-1234-5678 (担当：佐藤 花子)`;
+
+    const INITIAL_RULES = [
+      { key: '株式会社ABCテクノロジーズ', type: '法人', val: '甲社', id: 'r1' },
+      { key: '山田 太郎', type: '個人', val: '乙氏', id: 'r2' },
+      { key: '東京都渋谷区神南1-1-1', type: '住所', val: '甲の所在地', id: 'r3' },
+      { key: '東京都世田谷区北沢2-2-2', type: '住所', val: '乙の居住地', id: 'r4' },
+      { key: 'Project Alpha', type: '機密', val: '本件プロジェクト', id: 'r5' },
+      { key: '佐藤 花子', type: '個人', val: '担当者A', id: 'r6' },
+      { key: '03-1234-5678', type: '電話', val: '連絡先X', id: 'r7' }
+    ];
+    
+    // OCR Simulation Data (Mock Contracts)
+    const MOCK_CONTRACTS = [
+      {
+        title: "業務委託契約書（サンプル）",
+        content: `業務委託契約書
+
+委託者：株式会社イノベーション・ジャパン（以下「甲」という）と、
+受託者：鈴木 一郎（以下「乙」という）は、以下の通り業務委託契約を締結する。
+
+第1条（目的）
+甲は、乙に対し、次条に定める業務を委託し、乙はこれを受託する。
+
+第2条（業務内容）
+1. 新規WebアプリケーションのUIデザイン作成
+2. フロントエンド実装（React/Tailwind CSS使用）
+3. 成果物の納入場所：東京都港区六本木1-2-3 甲のオフィス
+
+第3条（委託料）
+金500,000円（消費税別）とする。支払いは月末締め、翌月末払いとする。
+
+日付：2026年4月1日
+`
+      },
+      {
+        title: "秘密保持誓約書（サンプル）",
+        content: `秘密保持誓約書
+
+株式会社フューチャー・システムズ 御中
+
+私は、貴社との取引開始にあたり、貴社から開示された一切の情報（技術情報、営業情報、顧客情報等を含むがこれらに限らない）について、厳に秘密を保持することを誓約いたします。
+
+住所：大阪府大阪市北区梅田1-1-1
+氏名：田中 次郎 ㊞
+電話：06-1234-5678
+
+1. 秘密情報の管理
+私は、開示された秘密情報を善良なる管理者の注意をもって管理し、第三者に漏洩、開示しません。
+2. 目的外使用の禁止
+私は、秘密情報を本取引の遂行以外の目的で使用しません。
+`
+      }
+    ];
+
+    // Functions
+    const showToast = (msg, type='success') => {
+      els.toastMsg.textContent = msg;
+      
+      // Reset indicator
+      els.toastIndicator.className = 'w-2 h-2 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.2)] flex-shrink-0';
+      
+      // Color logic
+      if(type === 'success') {
+          els.toastIndicator.classList.add('bg-emerald-400', 'shadow-[0_0_8px_rgba(52,211,153,0.5)]');
+      } else if (type === 'error') {
+          els.toastIndicator.classList.add('bg-red-400', 'shadow-[0_0_8px_rgba(248,113,113,0.5)]');
+      } else if (type === 'info') {
+          els.toastIndicator.classList.add('bg-blue-400', 'shadow-[0_0_8px_rgba(96,165,250,0.5)]');
+      } else {
+          // Default/Warning
+          els.toastIndicator.classList.add('bg-amber-400', 'shadow-[0_0_8px_rgba(251,191,36,0.5)]');
+      }
+
+      els.toast.classList.remove('translate-y-20', 'opacity-0');
+      
+      // Auto hide duration based on length
+      const duration = msg.length > 20 ? 4500 : 3000;
+      setTimeout(() => els.toast.classList.add('translate-y-20', 'opacity-0'), duration);
+    };
+
+    // Debounce Function
+    const debounce = (func, wait) => {
+      let timeout;
+      return function(...args) {
+        const context = this;
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(context, args), wait);
+      };
+    };
+
+    const processAnonymization = () => {
+      let result = els.srcText.value;
+      if (!result) {
+        els.dstText.innerHTML = '<span class="text-slate-400 dark:text-slate-600 italic">待機中...</span>';
+        updateStats(0);
+        return;
+      }
+
+      const activeRules = [...state.rules].sort((a, b) => b.key.length - a.key.length);
+      let totalReplacements = 0;
+      const ruleCounts = {};
+
+      activeRules.forEach(rule => {
+        if (!rule.key || !rule.val) return;
+        
+        const escapedKey = rule.key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(escapedKey, 'g');
+        
+        // Count matches
+        const matches = result.match(regex);
+        const count = matches ? matches.length : 0;
+        ruleCounts[rule.id] = count;
+        totalReplacements += count;
+
+        const replacement = state.mode === 'blackout' 
+          ? '█'.repeat(Math.min(rule.key.length, 6))
+          : rule.val;
+
+        result = result.replace(regex, `<span class="bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 px-0.5 rounded box-decoration-clone transition-all" title="${rule.key} → ${replacement}">${replacement}</span>`);
+      });
+
+      els.dstText.innerHTML = result.replace(/\n/g, '<br>');
+      
+      // Update stats and UI
+      updateStats(totalReplacements);
+      updateRuleCounts(ruleCounts);
+    };
+    
+    // Debounced version of processing
+    const processAnonymizationDebounced = debounce(processAnonymization, 300);
+
+    const updateStats = (count) => {
+        if(count > 0) {
+            els.statsBadge.textContent = `${count}箇所`;
+            els.statsBadge.classList.remove('hidden');
+        } else {
+            els.statsBadge.classList.add('hidden');
+        }
+    };
+
+    const updateRuleCounts = (counts) => {
+        document.querySelectorAll('.rule-item').forEach(el => {
+            const id = el.dataset.id;
+            const countEl = el.querySelector('.rule-count');
+            const count = counts[id] || 0;
+            
+            countEl.textContent = `x${count}`;
+            if(count > 0) {
+                countEl.classList.remove('hidden');
+                countEl.classList.add('text-emerald-500', 'font-bold');
+            } else {
+                // Keep showing 0 but dim
+                countEl.classList.remove('hidden', 'text-emerald-500', 'font-bold');
+            }
+        });
+    };
+
+    const createRuleElement = (rule) => {
+      const tpl = document.getElementById('ruleTemplate');
+      const clone = tpl.content.cloneNode(true);
+      const div = clone.querySelector('.rule-item');
+      
+      div.dataset.id = rule.id;
+      div.querySelector('.rule-key').textContent = rule.key;
+      
+      const typeSpan = div.querySelector('.tag');
+      typeSpan.textContent = rule.type;
+      
+      if(rule.type === '法人') typeSpan.className = "tag text-[10px] px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-600 dark:text-blue-300 whitespace-nowrap";
+      if(rule.type === '個人') typeSpan.className = "tag text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/20 text-purple-600 dark:text-purple-300 whitespace-nowrap";
+      if(rule.type === '機密') typeSpan.className = "tag text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-600 dark:text-red-300 whitespace-nowrap";
+
+      const input = div.querySelector('.rule-val');
+      input.value = rule.val;
+      input.addEventListener('input', (e) => {
+        rule.val = e.target.value;
+        processAnonymizationDebounced();
+      });
+
+      div.querySelector('.btn-remove').addEventListener('click', () => {
+        state.rules = state.rules.filter(r => r.id !== rule.id);
+        div.remove();
+        processAnonymization();
+      });
+
+      return div;
+    };
+
+    const renderRules = () => {
+      els.rulesList.innerHTML = '';
+      state.rules.forEach(rule => {
+        els.rulesList.appendChild(createRuleElement(rule));
+      });
+    };
+
+    const addCustomRule = () => {
+      const selection = window.getSelection().toString().trim();
+      const key = selection || "新しいキーワード";
+      const id = 'custom-' + Date.now();
+      const newRule = { key: key, type: '手動', val: '置換テキスト', id: id };
+      state.rules.unshift(newRule);
+      renderRules();
+      processAnonymization();
+      
+      setTimeout(() => {
+        const row = els.rulesList.querySelector(`[data-id="${id}"]`);
+        if(row) row.querySelector('input').focus();
+      }, 50);
+    };
+
+    const setMode = (mode) => {
+      state.mode = mode;
+      if (mode === 'alias') {
+        els.modeAlias.className = "px-2 py-1 text-xs rounded-md bg-slate-300 dark:bg-slate-600 text-slate-800 dark:text-white shadow transition-all";
+        els.modeBlackout.className = "px-2 py-1 text-xs rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-all";
+        document.querySelectorAll('.rule-val').forEach(el => {
+          el.disabled = false;
+          el.classList.remove('opacity-50');
+        });
+      } else {
+        els.modeBlackout.className = "px-2 py-1 text-xs rounded-md bg-slate-300 dark:bg-slate-600 text-slate-800 dark:text-white shadow transition-all";
+        els.modeAlias.className = "px-2 py-1 text-xs rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-all";
+        document.querySelectorAll('.rule-val').forEach(el => {
+          el.disabled = true;
+          el.classList.add('opacity-50');
+        });
+      }
+      processAnonymization();
+      showToast(mode === 'alias' ? 'エイリアス置換モード' : '黒塗りモード');
+    };
+
+    // Mobile Tabs
+    const switchTab = (tab) => {
+        if(tab === 'src') {
+            els.tabSrc.className = 'flex-1 py-2 text-sm font-medium tab-active transition-colors';
+            els.tabDst.className = 'flex-1 py-2 text-sm font-medium tab-inactive transition-colors';
+            els.panelSrc.classList.remove('hidden', 'z-0');
+            els.panelSrc.classList.add('flex', 'z-10');
+            els.panelDst.classList.add('hidden');
+        } else {
+            els.tabDst.className = 'flex-1 py-2 text-sm font-medium tab-active transition-colors';
+            els.tabSrc.className = 'flex-1 py-2 text-sm font-medium tab-inactive transition-colors';
+            els.panelDst.classList.remove('hidden');
+            els.panelDst.classList.add('flex', 'z-10');
+            els.panelSrc.classList.add('hidden');
+        }
+    };
+    els.tabSrc.addEventListener('click', () => switchTab('src'));
+    els.tabDst.addEventListener('click', () => switchTab('dst'));
+
+
+    // Toggle Popover
+    const togglePanel = (btn, panel) => {
+        const isHidden = panel.classList.contains('hidden');
+        // Close others
+        [els.settingsPanel, els.helpPanel].forEach(p => p.classList.add('hidden'));
+        
+        if(isHidden) {
+            panel.classList.remove('hidden');
+        } else {
+            panel.classList.add('hidden');
+        }
+    };
+    
+    // Theme Switch
+    const setTheme = (theme) => {
+        if(theme === 'dark') {
+            document.documentElement.classList.add('dark');
+            els.themeDark.classList.add('bg-white', 'text-black', 'shadow');
+            els.themeDark.classList.remove('text-slate-500');
+            els.themeLight.classList.remove('bg-white', 'text-black', 'shadow');
+            els.themeLight.classList.add('text-slate-500');
+        } else {
+            document.documentElement.classList.remove('dark');
+            els.themeLight.classList.add('bg-white', 'text-black', 'shadow');
+            els.themeLight.classList.remove('text-slate-500');
+            els.themeDark.classList.remove('bg-white', 'text-black', 'shadow');
+            els.themeDark.classList.add('text-slate-500');
+        }
+    };
+
+    // Fallback Copy Function
+    function fallbackCopyTextToClipboard(text) {
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      
+      // Ensure it's not visible but part of the DOM
+      textArea.style.top = "0";
+      textArea.style.left = "0";
+      textArea.style.position = "fixed";
+      textArea.style.opacity = "0";
+
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+
+      try {
+        const successful = document.execCommand('copy');
+        const msg = successful ? 'クリップボードにコピーしました' : 'コピーに失敗しました';
+        showToast(msg, successful ? 'success' : 'error');
+      } catch (err) {
+        showToast('コピーできませんでした', 'error');
+        console.error('Fallback copy failed', err);
+      }
+
+      document.body.removeChild(textArea);
+    }
+
+    // Rules Export/Import
+    els.btnExportRules.addEventListener('click', () => {
+        if(state.rules.length === 0) {
+            // Show guide message instead of error
+            return showToast('保存できるルールがまだありません。\nまずはテキストを読み込んでみてください。', 'info');
+        }
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state.rules));
+        const a = document.createElement('a');
+        a.href = dataStr;
+        a.download = `quiet_rules_${new Date().toISOString().slice(0,10)}.json`;
+        a.click();
+        showToast('ルールをJSONで保存しました');
+        els.settingsPanel.classList.add('hidden');
+    });
+
+    els.btnImportRules.addEventListener('click', () => {
+        els.rulesFileInput.click();
+    });
+
+    els.rulesFileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if(!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const rules = JSON.parse(e.target.result);
+                if(Array.isArray(rules)) {
+                    state.rules = rules;
+                    renderRules();
+                    processAnonymization();
+                    showToast('ルールを読み込みました');
+                    els.settingsPanel.classList.add('hidden');
+                } else {
+                    throw new Error("Invalid format");
+                }
+            } catch (err) {
+                showToast('ファイルの読み込みに失敗しました', 'error');
+            }
+        };
+        reader.readAsText(file);
+        // Reset
+        els.rulesFileInput.value = '';
+    });
+
+
+    // Event Listeners
+    els.srcText.addEventListener('input', (e) => {
+      state.text = e.target.value;
+      processAnonymizationDebounced(); // Use debounced version
+    });
+
+    els.btnDemo.addEventListener('click', () => {
+      els.srcText.value = DEMO_TEXT;
+      state.text = DEMO_TEXT;
+      state.rules = JSON.parse(JSON.stringify(INITIAL_RULES));
+      renderRules();
+      processAnonymization();
+      showToast('デモデータを読み込みました');
+      els.settingsPanel.classList.add('hidden');
+    });
+
+    els.btnClearData.addEventListener('click', () => {
+      // confirm() might fail in iframe
+      // if(!confirm("全てクリアしますか？")) return; 
+      
+      els.srcText.value = '';
+      state.text = ''; // Sync state
+      state.rules = [];
+      els.dstText.innerHTML = '';
+      
+      renderRules();
+      updateStats(0);
+      
+      showToast('全データを消去しました', 'success'); // Changed message slightly
+      els.settingsPanel.classList.add('hidden');
+    });
+
+    els.btnCopy.addEventListener('click', () => {
+      const text = els.dstText.innerText;
+      
+      // Try modern API first
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+          showToast('クリップボードにコピーしました');
+        }).catch(err => {
+          // Fallback if permission denied or failed
+          console.warn('Clipboard API failed, using fallback', err);
+          fallbackCopyTextToClipboard(text);
+        });
+      } else {
+        // Fallback for older browsers or restricted environments
+        fallbackCopyTextToClipboard(text);
+      }
+    });
+
+    els.btnExport.addEventListener('click', () => {
+      if(!els.dstText.innerText) {
+          return showToast('保存する内容が空です。\nプレビューに文字が表示されてからお試しください。', 'info');
+      }
+      
+      const text = els.dstText.innerText;
+      const blob = new Blob([text], {type: 'text/plain'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `quiet_doc_${new Date().toISOString().slice(0,10)}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('テキストファイルとして保存しました');
+    });
+
+    els.btnAddRule.addEventListener('click', addCustomRule);
+
+    els.modeAlias.addEventListener('click', () => setMode('alias'));
+    els.modeBlackout.addEventListener('click', () => setMode('blackout'));
+    
+    // Header Buttons
+    els.btnSettings.addEventListener('click', (e) => {
+        e.stopPropagation();
+        togglePanel(els.btnSettings, els.settingsPanel);
+    });
+    
+    els.btnHelp.addEventListener('click', (e) => {
+        e.stopPropagation();
+        togglePanel(els.btnHelp, els.helpPanel);
+    });
+
+    els.themeDark.addEventListener('click', () => setTheme('dark'));
+    els.themeLight.addEventListener('click', () => setTheme('light'));
+
+    // Close popovers on outside click
+    document.addEventListener('click', (e) => {
+        if(!els.settingsPanel.contains(e.target) && !els.btnSettings.contains(e.target)) {
+            els.settingsPanel.classList.add('hidden');
+        }
+        if(!els.helpPanel.contains(e.target) && !els.btnHelp.contains(e.target)) {
+            els.helpPanel.classList.add('hidden');
+        }
+    });
+
+    // Drag & Drop / File Loading
+    const handleFile = (file) => {
+      if (!file) return;
+      
+      els.progress.classList.remove('hidden');
+      els.dropzone.classList.add('opacity-50', 'pointer-events-none');
+      
+      let p = 0;
+      const interval = setInterval(() => {
+        p += Math.random() * 20;
+        if (p > 100) p = 100;
+        els.progressBar.style.width = p + '%';
+        els.progressPercent.textContent = Math.floor(p) + '%';
+        
+        if (p === 100) {
+          clearInterval(interval);
+          setTimeout(() => {
+            els.progress.classList.add('hidden');
+            els.dropzone.classList.remove('opacity-50', 'pointer-events-none');
+            els.progressBar.style.width = '0%';
+            
+            if (file.type.match('text.*')) {
+              // Real Text File
+              const reader = new FileReader();
+              reader.onload = (e) => {
+                els.srcText.value = e.target.result;
+                state.text = e.target.result;
+                if (state.rules.length === 0) {
+                    state.rules = [{ key: 'サンプル', type: '自動', val: '***', id: 'auto1' }];
+                    renderRules();
+                }
+                processAnonymization();
+                showToast(`${file.name} を読み込みました`);
+              };
+              reader.readAsText(file);
+            } else {
+              // PDF/Image Simulation
+              const mock = MOCK_CONTRACTS[Math.floor(Math.random() * MOCK_CONTRACTS.length)];
+              
+              showToast('OCRシミュレーション実行完了');
+              els.srcText.value = `[OCR解析結果: ${file.name}]\n\n${mock.content}`;
+              state.text = els.srcText.value;
+              
+              // Add mock rules based on the selected template
+              if(mock.title.includes("業務委託")){
+                  state.rules = [
+                      { key: '株式会社イノベーション・ジャパン', type: '法人', val: '甲', id: 'm1' },
+                      { key: '鈴木 一郎', type: '個人', val: '乙', id: 'm2' },
+                      { key: '東京都港区六本木1-2-3', type: '住所', val: '甲のオフィス', id: 'm3' }
+                  ];
+              } else {
+                   state.rules = [
+                      { key: '株式会社フューチャー・システムズ', type: '法人', val: '貴社', id: 'm4' },
+                      { key: '田中 次郎', type: '個人', val: '私', id: 'm5' },
+                      { key: '大阪府大阪市北区梅田1-1-1', type: '住所', val: '住所地', id: 'm6' },
+                      { key: '06-1234-5678', type: '電話', val: '連絡先', id: 'm7' }
+                  ];
+              }
+              renderRules();
+              processAnonymization();
+            }
+          }, 600);
+        }
+      }, 100);
+    };
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+      els.dropzone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        els.dropzone.classList.add('drop-active');
+      });
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      els.dropzone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        els.dropzone.classList.remove('drop-active');
+      });
+    });
+
+    els.dropzone.addEventListener('drop', (e) => {
+      const dt = e.dataTransfer;
+      const file = dt.files[0];
+      handleFile(file);
+    });
+
+    els.fileInput.addEventListener('change', (e) => {
+      handleFile(e.target.files[0]);
+    });
+
+    // Init
+    setMode('alias');
+    setTheme('dark');
+  </script>
+</body>
+</html>
